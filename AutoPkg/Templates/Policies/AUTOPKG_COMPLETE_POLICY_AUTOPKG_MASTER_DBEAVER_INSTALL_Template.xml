@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- DBEAVER INSTALL TEMPLATE -->
+<policy>
+  <general>
+    <name>Install Latest %NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</name>
+    <enabled>true</enabled>
+    <frequency>Ongoing</frequency>
+    <category>
+      <name>AUTOPKG MASTER_PROVISIONING_INSTALL</name>
+    </category>
+    <trigger_other>install_%NAME%_AUTOPKG_MASTER</trigger_other>
+  </general>
+  <scope>
+    <all_computers>true</all_computers>
+  </scope>
+  <package_configuration>
+    <packages>
+      <package>
+        <name>%pkg_name%</name>
+        <action>Install</action>
+      </package>
+    </packages>
+  </package_configuration>
+  <scripts>
+    <script>
+      <name>01_install_latest_redshift_jdbc_AutoPkg_2025</name>
+      <priority>After</priority>
+    </script>
+    <script>
+      <name>02_deploy_dbeaver_configs_AutoPkg_2025</name>
+      <priority>After</priority>
+    </script>
+  </scripts>
+  <maintenance>
+    <recon>false</recon>
+  </maintenance>
+</policy>

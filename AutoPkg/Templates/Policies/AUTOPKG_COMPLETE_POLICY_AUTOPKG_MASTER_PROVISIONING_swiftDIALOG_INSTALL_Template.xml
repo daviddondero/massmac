@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- MASTER PROVISIONING INSTALL TEMPLATE -->
+<policy>
+  <general>
+    <name>Install Latest swift%NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</name>
+    <enabled>true</enabled>
+    <frequency>Ongoing</frequency>
+    <category>
+      <name>AUTOPKG MASTER_PROVISIONING_INSTALL</name>
+    </category>
+    <trigger_other>install_swift%NAME%_AUTOPKG_MASTER</trigger_other>
+  </general>
+  <scope>
+    <all_computers>true</all_computers>
+  </scope>
+  <package_configuration>
+    <packages>
+      <package>
+        <name>%pkg_name%</name>
+        <action>Install</action>
+      </package>
+    </packages>
+  </package_configuration>
+</policy>

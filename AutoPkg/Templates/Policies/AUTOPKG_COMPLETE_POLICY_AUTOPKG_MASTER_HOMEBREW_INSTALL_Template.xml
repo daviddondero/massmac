@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- HOMEBREW INSTALL TEMPLATE -->
+<policy>
+  <general>
+    <name>Install Latest %NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</name>
+    <enabled>true</enabled>
+    <frequency>Ongoing</frequency>
+    <category>
+      <name>AUTOPKG MASTER_PROVISIONING_INSTALL</name>
+    </category>
+    <trigger_other>install_%NAME%_AUTOPKG_MASTER</trigger_other>
+  </general>
+  <scope>
+    <all_computers>true</all_computers>
+  </scope>
+  <scripts>
+    <script>
+      <name>install_or_update_homebrew_autopkg</name>
+      <priority>After</priority>
+    </script>
+  </scripts>
+  <maintenance>
+    <recon>false</recon>
+  </maintenance>
+</policy>

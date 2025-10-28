@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SILENT INSTALL TEMPLATE -->
+<policy>
+   <general>
+      <name>%POLICY_NAME_SILENT_UPDATE%</name>
+      <enabled>false</enabled>
+      <frequency>Once every day</frequency>
+      <trigger_checkin>true</trigger_checkin>
+      <category>
+         <name>AUTOPKG SILENT_UPDATE</name>
+      </category>
+   </general>
+   <scope>
+      <computer_groups>
+         <computer_group>
+            <name>%GROUP_NAME%</name>
+         </computer_group>
+      </computer_groups>
+   </scope>
+   <scripts>
+      <size>1</size>
+      <script>
+         <name>autopkg_stop_policy_if_application_is_running</name>
+         <priority>Before</priority>
+         <parameter4>%NAME%</parameter4>
+      </script>
+   </scripts>
+   <maintenance>
+      <recon>true</recon>
+   </maintenance>
+   <files_processes></files_processes>
+</policy>

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SELF SERVICE INSTALL TEMPLATE -->
+<policy>
+  <general>
+    <name>%POLICY_NAME_SELF_SERVICE_INSTALL%</name>
+    <enabled>true</enabled>
+    <frequency>Ongoing</frequency>
+    <category>
+      <name>AUTOPKG SELF_SERVICE_INSTALL</name>
+    </category>
+  </general>
+  <scope>
+    <all_computers>true</all_computers>
+  </scope>
+  <self_service>
+    <use_for_self_service>true</use_for_self_service>
+    <install_button_text>Install %version%</install_button_text>
+    <reinstall_button_text>ReInstall %version%</reinstall_button_text>
+    <self_service_display_name>Install Latest %NAME%</self_service_display_name>
+    <self_service_description>Installs latest version of %NAME%.</self_service_description>
+    <force_users_to_view_description>true</force_users_to_view_description>
+    <self_service_categories>
+      <category>
+        <name>%CATEGORY%</name>
+        <display_in>true</display_in>
+        <feature_in>false</feature_in>
+      </category>
+    </self_service_categories>
+  </self_service>
+  <maintenance>
+    <recon>true</recon>
+  </maintenance>
+  <files_processes>
+    <run_command>jamf policy -event "install_%NAME%_AUTOPKG_MASTER"</run_command>
+  </files_processes>
+</policy>

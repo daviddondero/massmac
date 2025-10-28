@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SILENT INSTALL QUIT TEMPLATE -->
+<policy>
+   <general>
+      <name>%POLICY_NAME_SILENT_UPDATE_QUIT%</name>
+      <enabled>false</enabled>
+      <frequency>Ongoing</frequency>
+      <trigger_other>install_%NAME%_AUTOPKG_SILENT_UPDATE_QUIT</trigger_other>
+      <category>
+         <name>AUTOPKG SILENT_UPDATE_QUIT</name>
+      </category>
+   </general>
+   <scope>
+      <computer_groups>
+         <computer_group>
+            <name>%GROUP_NAME%</name>
+         </computer_group>
+      </computer_groups>
+   </scope>
+   <scripts>
+      <size>1</size>
+      <script>
+         <name>autopkg_force_quit_application</name>
+         <priority>Before</priority>
+         <parameter4>%NAME%</parameter4>
+      </script>
+   </scripts>
+   <maintenance>
+      <recon>true</recon>
+   </maintenance>
+   <files_processes>
+      <run_command>jamf policy -event "install_%NAME%_AUTOPKG_MASTER"</run_command>
+   </files_processes>
+</policy>
