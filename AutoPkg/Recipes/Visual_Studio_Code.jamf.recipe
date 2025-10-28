@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+
+  <dict>
+
+    <!-- 
+        Recipe Purpose:
+        - Downloads Visual Studio Code
+        - Uploads the package to Jamf Pro
+        - Creates or updates Smart Group
+        - Builds Jamf policies for provisioning, Self Service, and silent install
+        - Requires grahampugh-recipes processors:
+          https://github.com/grahampugh/jamf-upload/wiki
+    -->
+
+    <key>Description</key>
+    <string>Visual Studio Code deployment recipe for Jamf Pro using AutoPkg and jamf-upload processors.</string>
+
+    <!-- Unique identifier for this recipe -->
+    <key>Identifier</key>
+    <string>com.github.massmac.jamf.visual_studio_code</string>
+
+    <!-- Input variables for processors and templates -->
+    <key>Input</key>
+    <dict>
+
+      <!-- App Display Name for policies, groups, Self Service, etc. -->
+      <key>NAME</key>
+      <string>Visual Studio Code</string>
+
+      <!-- Extension Attribute for Version -->
+      <key>EXTENSION_ATTRIBUTE_NAME</key>
+      <string>AutoPkg %NAME% Update Status</string>
+
+      <!-- Extension Attribute Script -->
+      <key>EXTENSION_ATTRIBUTE_SCRIPT</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Extension_Attributes/AUTOPKG_Extension_Attribute_Update_Status.sh</string>
+
+      <!-- Package display name in Jamf Pro -->
+      <key>PKG_NAME</key>
+      <string>AutoPkg_Visual_Studio_Code</string>
+
+      <!-- Package deployment priority -->
+      <key>PKG_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Microsoft Product ID -->
+      <key>PRODUCTID</key>
+      <string>2156837</string>
+
+      <!-- Jamf Pro category name -->
+      <key>CATEGORY</key>
+      <string>Developers</string>
+
+      <!-- Category priority -->
+      <key>CATEGORY_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Smart Group to track outdated machines -->
+      <key>GROUP_NAME</key>
+      <string>%NAME%-autopkg-update-status</string>
+
+      <!-- Template defining Smart Group structure and logic -->
+      <key>GROUP_TEMPLATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Smart_Groups/AUTOPKG_SMART_GROUP_Template.xml</string>
+
+      <!-- Policy name for provisioning or automated deployments -->
+      <key>POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</string>
+
+      <!-- Policy name for user-initiated Self Service installs -->
+      <key>POLICY_NAME_SELF_SERVICE_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_SELF_SERVICE_INSTALL</string>
+
+      <!-- Policy name for user-initiated Self Service installs update -->
+      <key>POLICY_NAME_SELF_SERVICE_UPDATE</key>
+      <string>Update Latest %NAME% AUTOPKG_SELF_SERVICE_UPDATE</string>
+
+      <!-- Policy name for silent or background updates -->
+      <key>POLICY_NAME_SILENT_UPDATE</key>
+      <string>Install Latest %NAME% AUTOPKG_SILENT_UPDATE</string>
+
+      <!-- Policy name for silent updates - Quit application -->
+      <key>POLICY_NAME_SILENT_UPDATE_QUIT</key>
+      <string>Install Latest %NAME% AUTOPKG_SILENT_UPDATE_QUIT</string>
+
+      <!-- Template for Master and Provisioning deployments -->
+      <key>POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_AUTOPKG_MASTER_VISUAL_STUDIO_CODE_INSTALL_Template.xml</string>
+
+      <!-- Template for building the Self Service install policy -->
+      <key>POLICY_TEMPLATE_SELF_SERVICE_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SELF_SERVICE_INSTALL_Template.xml</string>
+
+      <!-- Template for building the Self Service update policy -->
+      <key>POLICY_TEMPLATE_SELF_SERVICE_UPDATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SELF_SERVICE_UPDATE_Template.xml</string>
+
+      <!-- Template for building the silent background update policy -->
+      <key>POLICY_TEMPLATE_SILENT_UPDATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SILENT_UPDATE_Template.xml</string>
+
+      <!-- Template for building the silent update policy - Quit application -->
+      <key>POLICY_TEMPLATE_SILENT_UPDATE_QUIT</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SILENT_UPDATE_QUIT_Template.xml</string>
+
+      <!-- Description shown in Jamf Self Service interface -->
+      <key>SELF_SERVICE_DESCRIPTION</key>
+      <string>Installs latest version of %NAME%.</string>
+
+      <!-- Display name for the Self Service policy button -->
+      <key>SELF_SERVICE_DISPLAY_NAME</key>
+      <string>Install Latest %NAME%</string>
+
+      <!-- Path to icon used for Self Service policy button -->
+      <key>SELF_SERVICE_ICON</key>
+      <string>/Users/autopkg/Library/AutoPkg/Self_Service_Icons/%PKG_NAME%.png</string>
+
+      <!-- Logic to skip redundant uploads -->
+      <key>UPDATE_PREDICATE</key>
+      <string>pkg_uploaded == False</string>
+
+      <!-- Replace logic for uploads and policies -->
+      <key>replace_category</key>
+      <string>True</string>
+      <key>replace_group</key>
+      <string>True</string>
+      <key>replace_pkg</key>
+      <string>True</string>
+      <key>replace_policy</key>
+      <string>True</string>
+
+      <!-- Rename and move pkgs to AutoPkg_Pkgs Directory -->
+      <key>AutoPkg_Pkgs</key>
+      <string>/Users/autopkg/Library/AutoPkg/AutoPkg_Pkgs</string>
+      
+    </dict>
+
+    <!-- Parent recipe providing the .pkg download -->
+    <key>ParentRecipe</key>
+    <string>com.github.amsysuk-recipes.pkg.VisualStudioCode</string>
+
+    <!-- Ordered list of processors -->
+    <key>Process</key>
+    <array>
+
+      <!-- Uploads Extension Attribute -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfExtensionAttributeUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>ea_name</key>
+          <string>%EXTENSION_ATTRIBUTE_NAME%</string>
+          <key>ea_script_path</key>
+          <string>%EXTENSION_ATTRIBUTE_SCRIPT%</string>
+          <key>replace_ea</key>
+          <string>True</string>
+        </dict>
+      </dict>
+
+      <!-- Upload or replace Jamf category -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfCategoryUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>category_name</key>
+          <string>%CATEGORY%</string>
+          <key>category_priority</key>
+          <string>%CATEGORY_PRIORITY%</string>
+          <key>replace</key>
+          <string>%replace_category%</string>
+        </dict>
+      </dict>
+
+      <!-- Upload package to Jamf -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPackageUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkg_category</key>
+          <string>%CATEGORY%</string>
+          <key>pkg_display_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_priority</key>
+          <string>%PKG_PRIORITY%</string>
+          <key>predicate</key>
+          <string>%UPDATE_PREDICATE%</string>
+          <key>replace</key>
+          <string>%replace_pkg%</string>
+          <key>send_notification</key>
+          <string>True</string>
+        </dict>
+      </dict>
+
+      <!-- Upload Smart Group -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfComputerGroupUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>computergroup_name</key>
+          <string>%GROUP_NAME%</string>
+          <key>computergroup_template</key>
+          <string>%GROUP_TEMPLATE%</string>
+          <key>replace_group</key>
+          <string>%replace_group%</string>
+        </dict>
+      </dict>
+
+      <!-- Provisioning install policy -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the Self Service policy for user installs -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SELF_SERVICE_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SELF_SERVICE_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>self_service_description</key>
+          <string>%SELF_SERVICE_DESCRIPTION%</string>
+          <key>icon</key>
+          <string>%SELF_SERVICE_ICON%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the Self Service policy for user updates -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SELF_SERVICE_UPDATE%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SELF_SERVICE_UPDATE%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>self_service_description</key>
+          <string>%SELF_SERVICE_DESCRIPTION%</string>
+          <key>icon</key>
+          <string>%SELF_SERVICE_ICON%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates silent update policy for background deployment -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SILENT_UPDATE%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SILENT_UPDATE%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>icon</key>
+          <string/>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates silent update policy - Quit application -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SILENT_UPDATE_QUIT%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SILENT_UPDATE_QUIT%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>icon</key>
+          <string/>
+        </dict>
+      </dict>
+
+      <!-- Rename pkg and move to AutoPkg_Pkgs Directory -->
+      <dict>
+        <key>Processor</key>
+        <string>Copier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>source_path</key>
+          <string>%pkg_path%</string>
+          <key>destination_path</key>
+          <string>%AutoPkg_Pkgs%/%PKG_NAME%-%version%.pkg</string>
+        </dict>
+      </dict>
+
+      <!-- Cleanup entire recipe cache directory -->
+      <dict>
+        <key>Processor</key>
+        <string>PathDeleter</string>
+        <key>Arguments</key>
+        <dict>
+          <key>path_list</key>
+          <array>
+            <string>%RECIPE_CACHE_DIR%</string>
+          </array>
+        </dict>
+      </dict>
+    
+    </array>
+  </dict>
+</plist>

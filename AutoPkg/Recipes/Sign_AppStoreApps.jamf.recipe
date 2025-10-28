@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+
+  <dict>
+
+    <!-- 
+        Recipe Purpose:
+        - Signs the generated package with a specified certificate
+        - Assumes package is created by com.github.massmac.jamf.appstore_apps recipe
+        - Requires rtrouton SharedProcessors
+    -->
+
+    <key>Description</key>
+    <string>This recipe signs the generated package for the Apple Store App using a specified certificate.</string>
+
+    <!-- Unique identifier for this recipe -->
+    <key>Identifier</key>
+    <string>com.github.massmac.sign.appstore_apps</string>
+
+    <!-- Input variables for signing -->
+    <key>Input</key>
+    <dict>
+
+      <!-- Certificate name from keychain used for signing -->
+      <key>SIGNINGCERTIFICATE</key>
+      <string>AutoPkg Certificate</string>
+    </dict>
+
+    <!-- Parent recipe that builds the unsigned package -->
+    <key>ParentRecipe</key>
+    <string>com.github.massmac.jamf.appstore_apps</string>
+
+    <!-- Process to clean cache and sign the package -->
+    <key>Process</key>
+    <array>
+
+      <!-- Process to sign the package -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.rtrouton.SharedProcessors/PkgSigner</string>
+        <key>Arguments</key>
+        <dict>
+
+          <!-- Path to the generated package to be signed -->
+          <key>pkg_path</key>
+          <string>%RECIPE_CACHE_DIR%/%NAME%-%version%.pkg</string>
+
+          <!-- Certificate identity for signing -->
+          <key>signing_cert</key>
+          <string>%SIGNINGCERTIFICATE%</string>
+        </dict>
+      </dict>
+      
+    </array>
+  </dict>
+</plist>

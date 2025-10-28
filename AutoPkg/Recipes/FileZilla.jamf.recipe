@@ -1,0 +1,459 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+
+  <dict>
+
+    <!--
+        Recipe Purpose:
+        - Automates downloading the latest FileZilla release from the vendor site using Playwright
+          (handles dynamic pages to obtain the direct download URL).
+        - Unarchives the download, verifies the app's code signature for security, and builds a .pkg installer.
+          If code signature verification fails, the recipe stops to prevent deploying untrusted software.
+        - Uploads the .pkg to Jamf Pro and automatically:
+            * Creates/updates a Smart Group to target devices needing FileZilla.
+            * Creates/updates Policies for deployment.
+            * Creates/updates an Extension Attribute for inventory/version tracking.
+        - Requires the grahampugh-recipes processors for Jamf Pro upload:
+          https://github.com/grahampugh/jamf-upload/wiki
+        - Requires installing Playwright in AutoPkg's Python environment:
+            1. sudo -u autopkg /usr/local/autopkg/python -m pip install playwright
+            2. /Library/AutoPkg/Python3/Python.framework/Versions/3.10/bin/playwright install
+               (this installs the browsers needed by Playwright).
+        - Requires the RenderedURLTextSearcher processor from pappirauk/svs
+          for extracting the correct FileZilla download link:
+          https://github.com/pappirauk/svs-recipes/blob/main/FileZilla/RenderedURLTextSearcher.py
+    -->
+
+    <!-- Recipe description -->
+    <key>Description</key>
+    <string>FileZilla deployment recipe for Jamf Pro via AutoPkg and jamf-upload processors.</string>
+
+    <!-- Unique recipe identifier within your organization or repo -->
+    <key>Identifier</key>
+    <string>com.github.massmac.jamf.filezilla</string>
+
+    <!-- Input variables used throughout processors and templates -->
+    <key>Input</key>
+    <dict>
+
+      <!-- App Display Name -->
+      <key>NAME</key>
+      <string>FileZilla</string>
+
+      <!-- Extension Attribute for Version -->
+      <key>EXTENSION_ATTRIBUTE_NAME</key>
+      <string>AutoPkg %NAME% Update Status</string>
+
+      <!-- Extension Attribute Script -->
+      <key>EXTENSION_ATTRIBUTE_SCRIPT</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Extension_Attributes/AUTOPKG_Extension_Attribute_Update_Status.sh</string>
+
+      <!-- Package display name in Jamf Pro -->
+      <key>PKG_NAME</key>
+      <string>AutoPkg_FileZilla</string>
+
+      <!-- Priority for package deployment ordering -->
+      <key>PKG_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Jamf Pro category name for organizing packages and policies -->
+      <key>CATEGORY</key>
+      <string>Developers</string>
+
+      <!-- Category priority -->
+      <key>CATEGORY_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Smart Group name used to track machines missing latest version -->
+      <key>GROUP_NAME</key>
+      <string>%NAME%-autopkg-update-status</string>
+
+      <!-- Template defining Smart Group structure and logic -->
+      <key>GROUP_TEMPLATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Smart_Groups/AUTOPKG_SMART_GROUP_Template.xml</string>
+
+      <!-- Policy name for provisioning or automated deployments -->
+      <key>POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</string>
+
+      <!-- Policy name for user-initiated Self Service installs -->
+      <key>POLICY_NAME_SELF_SERVICE_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_SELF_SERVICE_INSTALL</string>
+
+      <!-- Policy name for user-initiated Self Service installs update -->
+      <key>POLICY_NAME_SELF_SERVICE_UPDATE</key>
+      <string>Update Latest %NAME% AUTOPKG_SELF_SERVICE_UPDATE</string>
+
+      <!-- Policy name for silent or background updates -->
+      <key>POLICY_NAME_SILENT_UPDATE</key>
+      <string>Install Latest %NAME% AUTOPKG_SILENT_UPDATE</string>
+
+      <!-- Policy name for silent updates - Quit application -->
+      <key>POLICY_NAME_SILENT_UPDATE_QUIT</key>
+      <string>Install Latest %NAME% AUTOPKG_SILENT_UPDATE_QUIT</string>
+
+      <!-- Template for Master and Provisioning deployments -->
+      <key>POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_AUTOPKG_MASTER_PROVISIONING_INSTALL_Template.xml</string>
+
+      <!-- Template for building the Self Service install policy -->
+      <key>POLICY_TEMPLATE_SELF_SERVICE_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SELF_SERVICE_INSTALL_Template.xml</string>
+
+      <!-- Template for building the Self Service update policy -->
+      <key>POLICY_TEMPLATE_SELF_SERVICE_UPDATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SELF_SERVICE_UPDATE_Template.xml</string>
+
+      <!-- Template for building the silent background update policy -->
+      <key>POLICY_TEMPLATE_SILENT_UPDATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SILENT_UPDATE_Template.xml</string>
+
+      <!-- Template for building the silent update policy - Quit application -->
+      <key>POLICY_TEMPLATE_SILENT_UPDATE_QUIT</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SILENT_UPDATE_QUIT_Template.xml</string>
+
+      <!-- Description shown in Jamf Self Service interface -->
+      <key>SELF_SERVICE_DESCRIPTION</key>
+      <string>Installs latest version of %NAME%.</string>
+
+      <!-- Display name for the Self Service policy button -->
+      <key>SELF_SERVICE_DISPLAY_NAME</key>
+      <string>Install Latest %NAME%</string>
+
+      <!-- Path to icon used for Self Service policy button -->
+      <key>SELF_SERVICE_ICON</key>
+      <string>/Users/autopkg/Library/AutoPkg/Self_Service_Icons/%PKG_NAME%.png</string>
+
+      <!-- Predicate logic to determine if package upload is needed -->
+      <key>UPDATE_PREDICATE</key>
+      <string>pkg_uploaded == False</string>
+
+      <!-- Replace logic for category, Smart Group, package, and policies -->
+      <key>replace_category</key>
+      <string>True</string>
+      <key>replace_group</key>
+      <string>True</string>
+      <key>replace_pkg</key>
+      <string>True</string>
+      <key>replace_policy</key>
+      <string>True</string>
+
+      <!-- FileZilla Bundle ID -->
+      <key>BUNDLE_ID</key>
+      <string>org.filezilla.client</string>
+
+      <!-- Regex Pattern for Playwright Processor -->
+      <key>RE_PATTERN</key>
+      <string>&lt;a href="(?P&lt;url&gt;http[s]?.*?(?P&lt;filename&gt;FileZilla_(?P&lt;version&gt;[\d.]+)_macos-x86.*?\.tar\.bz2).*?)"</string>
+
+      <!-- Rename and move pkgs to AutoPkg_Pkgs Directory -->
+      <key>AutoPkg_Pkgs</key>
+      <string>/Users/autopkg/Library/AutoPkg/AutoPkg_Pkgs</string>
+
+    </dict>
+
+
+    <!-- Processing steps executed in order -->
+    <key>Process</key>
+    <array>
+
+      <!-- Find download link using Playwright -->
+      <dict>
+        <key>Arguments</key>
+        <dict>
+          <key>re_pattern</key>
+          <string>%RE_PATTERN%</string>
+          <key>url</key>
+          <string>https://filezilla-project.org/download.php?show_all=1</string>
+          <key>request_headers</key>
+          <dict>
+            <key>user-agent</key>
+            <string>Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_4) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1 Safari/605.1.15</string>
+          </dict>
+        </dict>
+        <key>Processor</key>
+        <string>com.github.pappirauk.FileZilla.download/RenderedURLTextSearcher</string>
+      </dict>
+
+      <!-- Download file -->
+      <dict>
+        <key>Processor</key>
+        <string>URLDownloader</string>
+      </dict>
+
+      <!-- End of check phase -->
+      <dict>
+        <key>Processor</key>
+        <string>EndOfCheckPhase</string>
+      </dict>
+
+      <!-- Unpack the downloaded archive -->
+      <dict>
+        <key>Processor</key>
+        <string>Unarchiver</string>
+        <key>Arguments</key>
+        <dict>
+          <key>archive_path</key>
+          <string>%pathname%</string>
+          <key>destination_path</key>
+          <string>%RECIPE_CACHE_DIR%/extracted</string>
+        </dict>
+      </dict>
+
+      <!-- Verify code signature AFTER extraction -->
+      <dict>
+        <key>Processor</key>
+        <string>CodeSignatureVerifier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>input_path</key>
+          <string>%RECIPE_CACHE_DIR%/extracted/FileZilla.app</string>
+          <key>requirement</key>
+          <string>identifier "org.filezilla-project.filezilla" and anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] /* exists */ and certificate leaf[field.1.2.840.113635.100.6.1.13] /* exists */ and certificate leaf[subject.OU] = "5VPGKXL75N"</string>
+        </dict>
+      </dict>
+
+      <!-- Prepare package root -->
+      <dict>
+        <key>Processor</key>
+        <string>PkgRootCreator</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkgroot</key>
+          <string>%RECIPE_CACHE_DIR%/%NAME%</string>
+          <key>pkgdirs</key>
+          <dict>
+            <key>Applications</key>
+            <string>0775</string>
+          </dict>
+        </dict>
+      </dict>
+
+      <!-- Copy extracted app to package root -->
+      <dict>
+        <key>Processor</key>
+        <string>Copier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>source_path</key>
+          <string>%RECIPE_CACHE_DIR%/extracted/%NAME%.app</string>
+          <key>destination_path</key>
+          <string>%RECIPE_CACHE_DIR%/%NAME%/Applications/%NAME%.app</string>
+        </dict>
+      </dict>
+
+      <!-- Create pkg -->
+      <dict>
+        <key>Processor</key>
+        <string>PkgCreator</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkg_request</key>
+          <dict>
+            <key>pkgname</key>
+            <string>%PKG_NAME%-%version%</string>
+            <!-- Changed here -->
+            <key>version</key>
+            <string>%version%</string>
+            <key>id</key>
+            <string>%BUNDLE_ID%</string>
+            <key>options</key>
+            <string>purge_ds_store</string>
+            <key>chown</key>
+            <array>
+              <dict>
+                <key>path</key>
+                <string>Applications</string>
+                <key>user</key>
+                <string>root</string>
+                <key>group</key>
+                <string>admin</string>
+              </dict>
+            </array>
+          </dict>
+        </dict>
+      </dict>
+
+      <!-- Upload Extension Attribute -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfExtensionAttributeUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>ea_name</key>
+          <string>%EXTENSION_ATTRIBUTE_NAME%</string>
+          <key>ea_script_path</key>
+          <string>%EXTENSION_ATTRIBUTE_SCRIPT%</string>
+          <key>replace_ea</key>
+          <string>True</string>
+        </dict>
+      </dict>
+
+      <!-- Upload Jamf category -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfCategoryUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>category_name</key>
+          <string>%CATEGORY%</string>
+          <key>category_priority</key>
+          <string>%CATEGORY_PRIORITY%</string>
+          <key>replace</key>
+          <string>%replace_category%</string>
+        </dict>
+      </dict>
+
+      <!-- Upload Jamf package -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPackageUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkg_category</key>
+          <string>%CATEGORY%</string>
+          <key>pkg_display_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_priority</key>
+          <string>%PKG_PRIORITY%</string>
+          <key>predicate</key>
+          <string>%UPDATE_PREDICATE%</string>
+          <key>replace</key>
+          <string>%replace_pkg%</string>
+        </dict>
+      </dict>
+
+      <!-- Upload Jamf smart group -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfComputerGroupUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>computergroup_name</key>
+          <string>%GROUP_NAME%</string>
+          <key>computergroup_template</key>
+          <string>%GROUP_TEMPLATE%</string>
+          <key>replace_group</key>
+          <string>%replace_group%</string>
+        </dict>
+      </dict>
+
+      <!-- Upload provisioning install policy -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the Self Service policy for user installs -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SELF_SERVICE_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SELF_SERVICE_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>self_service_description</key>
+          <string>%SELF_SERVICE_DESCRIPTION%</string>
+          <key>icon</key>
+          <string>%SELF_SERVICE_ICON%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the Self Service policy for user updates -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SELF_SERVICE_UPDATE%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SELF_SERVICE_UPDATE%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>self_service_description</key>
+          <string>%SELF_SERVICE_DESCRIPTION%</string>
+          <key>icon</key>
+          <string>%SELF_SERVICE_ICON%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates silent update policy for background deployment -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SILENT_UPDATE%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SILENT_UPDATE%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>icon</key>
+          <string/>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates silent update policy - Quit application -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SILENT_UPDATE_QUIT%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SILENT_UPDATE_QUIT%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>icon</key>
+          <string/>
+        </dict>
+      </dict>
+
+      <!-- Move Pkg to AutoPkg_Pkgs Directory -->
+      <dict>
+        <key>Processor</key>
+        <string>Copier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>source_path</key>
+          <string>%pkg_path%</string>
+          <key>destination_path</key>
+          <string>%AutoPkg_Pkgs%/%PKG_NAME%-%version%.pkg</string>
+        </dict>
+      </dict>
+
+      <!-- Cleanup entire recipe cache directory -->
+      <dict>
+        <key>Processor</key>
+        <string>PathDeleter</string>
+        <key>Arguments</key>
+        <dict>
+          <key>path_list</key>
+          <array>
+            <string>%RECIPE_CACHE_DIR%</string>
+          </array>
+        </dict>
+      </dict>
+
+    </array>
+  </dict>
+</plist>

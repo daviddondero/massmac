@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+
+  <dict>
+  
+    <!-- 
+        Recipe Purpose:
+        - Downloads Microsoft Office 365 Suite
+        - Uploads the package to Jamf Pro
+        - Creates or updates Smart Group
+        - Builds Jamf policy for Self Service install
+        - Requires grahampugh-recipes processors:
+          https://github.com/grahampugh/jamf-upload/wiki
+
+          Override the PRODUCTID key as follows:
+          525133 for Office 365 (Americas) - Currently using
+          532572 for Office 365 (Europe)
+          532577 for Office 365 (Asia)
+          2009112 for Office 365 Business Pro (Americas) (includes Teams)
+    -->
+
+    <key>Description</key>
+    <string>Microsoft Office 365 Suite deployment recipe for Jamf Pro using AutoPkg and jamf-upload processors.</string>
+
+    <!-- Unique identifier for this recipe -->
+    <key>Identifier</key>
+    <string>com.github.massmac.jamf.microsoft_office_365_suite</string>
+
+    <!-- Input variables for processors and templates -->
+    <key>Input</key>
+    <dict>
+
+      <!-- App Display Name for policies, groups, Self Service, etc. -->
+      <key>NAME</key>
+      <string>Microsoft Office 365 Suite</string>
+
+      <!-- Extension Attribute for Version -->
+      <key>EXTENSION_ATTRIBUTE_NAME</key>
+      <string>AutoPkg %NAME% Update Status</string>
+
+      <!-- Extension Attribute Script -->
+      <key>EXTENSION_ATTRIBUTE_SCRIPT</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Extension_Attributes/AUTOPKG_Extension_Attribute_Update_Status.sh</string>
+
+      <!-- Package display name in Jamf Pro -->
+      <key>PKG_NAME</key>
+      <string>AutoPkg_Microsoft_Office_365_Suite</string>
+
+      <!-- Package deployment priority -->
+      <key>PKG_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Jamf Pro category name -->
+      <key>CATEGORY</key>
+      <string>Microsoft</string>
+
+      <!-- Category priority -->
+      <key>CATEGORY_PRIORITY</key>
+      <string>20</string>
+
+      <!-- Smart Group name used to track machines missing latest version -->
+      <key>GROUP_NAME</key>
+      <string>%NAME%-autopkg-update-status</string>
+
+      <!-- Template defining Smart Group structure and logic -->
+      <key>GROUP_TEMPLATE</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Smart_Groups/AUTOPKG_SMART_GROUP_Template.xml</string>
+
+      <!-- Policy name for provisioning or automated deployments -->
+      <key>POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_MASTER_PROVISIONING_INSTALL</string>
+
+      <!-- Policy name for user-initiated Self Service installs -->
+      <key>POLICY_NAME_SELF_SERVICE_INSTALL</key>
+      <string>Install Latest %NAME% AUTOPKG_SELF_SERVICE_INSTALL</string>
+
+      <!-- Template for Master and Provisioning deployments -->
+      <key>POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_AUTOPKG_MASTER_PROVISIONING_INSTALL_Template.xml</string>
+
+      <!-- Template for building the Self Service install policy -->
+      <key>POLICY_TEMPLATE_SELF_SERVICE_INSTALL</key>
+      <string>/Users/autopkg/Library/AutoPkg/Templates/Policies/AUTOPKG_COMPLETE_POLICY_SELF_SERVICE_INSTALL_Template.xml</string>
+
+      <!-- Description shown in Jamf Self Service interface -->
+      <key>SELF_SERVICE_DESCRIPTION</key>
+      <string>Installs latest version of %NAME%.</string>
+
+      <!-- Display name for the Self Service policy button -->
+      <key>SELF_SERVICE_DISPLAY_NAME</key>
+      <string>Install Latest %NAME%</string>
+
+      <!-- Path to icon used for Self Service policy button -->
+      <key>SELF_SERVICE_ICON</key>
+      <string>/Users/autopkg/Library/AutoPkg/Self_Service_Icons/%PKG_NAME%.png</string>
+
+      <!-- Predicate logic to determine if package upload is needed -->
+      <key>UPDATE_PREDICATE</key>
+      <string>pkg_uploaded == False</string>
+
+      <!-- Replace logic for category, Smart Group, package, and policies -->
+      <key>replace_category</key>
+      <string>True</string>
+      <key>replace_group</key>
+      <string>True</string>
+      <key>replace_pkg</key>
+      <string>True</string>
+      <key>replace_policy</key>
+      <string>True</string>
+
+      <!-- Rename and move pkgs to AutoPkg_Pkgs Directory -->
+      <key>AutoPkg_Pkgs</key>
+      <string>/Users/autopkg/Library/AutoPkg/AutoPkg_Pkgs</string>
+
+      <!-- Rename and move pkgs to AutoPkg_Pkgs Directory - 525133 for Office 365 (Americas) -->
+      <key>PRODUCTID</key>
+      <string>525133</string>
+
+      <!-- Version String -->
+      <key>VERSIONING_STRING</key>
+      <string>OneNote</string>
+
+      <!-- Download URL -->
+      <key>DOWNLOADURL</key>
+      <string>https://go.microsoft.com/fwlink/?linkid=%PRODUCTID%</string>
+    
+    </dict>
+
+    <key>Process</key>
+    <array>
+
+      <!-- Download Office 365 SKU-less installer -->
+      <dict>
+        <key>Processor</key>
+        <string>URLDownloader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>filename</key>
+          <string>%PKG_NAME%.pkg</string>
+          <key>url</key>
+          <string>%DOWNLOADURL%</string>
+        </dict>
+      </dict>
+
+      <!-- Verify code signature of downloaded pkg -->
+      <dict>
+        <key>Processor</key>
+        <string>CodeSignatureVerifier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>expected_authority_names</key>
+          <array>
+            <string>Developer ID Installer: Microsoft Corporation (UBF8T346G9)</string>
+            <string>Developer ID Certification Authority</string>
+            <string>Apple Root CA</string>
+          </array>
+          <key>input_path</key>
+          <string>%pathname%</string>
+        </dict>
+      </dict>
+
+      <!-- End of initial check phase -->
+      <dict>
+        <key>Processor</key>
+        <string>EndOfCheckPhase</string>
+      </dict>
+
+      <!-- Unpack the downloaded pkg -->
+      <dict>
+        <key>Processor</key>
+        <string>FlatPkgUnpacker</string>
+        <key>Arguments</key>
+        <dict>
+          <key>destination_path</key>
+          <string>%RECIPE_CACHE_DIR%/downloads/unpack</string>
+          <key>flat_pkg_path</key>
+          <string>%pathname%</string>
+        </dict>
+      </dict>
+
+      <!-- Find the specific pkg based on versioning string -->
+      <dict>
+        <key>Processor</key>
+        <string>FileFinder</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pattern</key>
+          <string>%RECIPE_CACHE_DIR%/downloads/unpack/*%VERSIONING_STRING%*.pkg</string>
+        </dict>
+      </dict>
+
+      <!-- Unpack the payload -->
+      <dict>
+        <key>Processor</key>
+        <string>PkgPayloadUnpacker</string>
+        <key>Arguments</key>
+        <dict>
+          <key>destination_path</key>
+          <string>%RECIPE_CACHE_DIR%/downloads/payload</string>
+          <key>pkg_payload_path</key>
+          <string>%found_filename%/Payload</string>
+        </dict>
+      </dict>
+
+      <!-- Extract version from Info.plist -->
+      <dict>
+        <key>Processor</key>
+        <string>Versioner</string>
+        <key>Arguments</key>
+        <dict>
+          <key>input_plist_path</key>
+          <string>%RECIPE_CACHE_DIR%/downloads/payload/Microsoft %VERSIONING_STRING%.app/Contents/Info.plist</string>
+          <key>plist_version_key</key>
+          <string>CFBundleShortVersionString</string>
+        </dict>
+      </dict>
+
+      <!-- Read minimum system version -->
+      <dict>
+        <key>Processor</key>
+        <string>PlistReader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>info_path</key>
+          <string>%input_plist_path%</string>
+          <key>plist_keys</key>
+          <dict>
+            <key>LSMinimumSystemVersion</key>
+            <string>minimum_os_version</string>
+          </dict>
+        </dict>
+      </dict>
+
+      <!-- Copy pkg to final path -->
+      <dict>
+        <key>Processor</key>
+        <string>PkgCopier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkg_path</key>
+          <string>%RECIPE_CACHE_DIR%/%PKG_NAME%-%version%.pkg</string>
+          <key>source_pkg</key>
+          <string>%pathname%</string>
+        </dict>
+      </dict>
+
+      <!-- Uploads Extension Attribute -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfExtensionAttributeUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>ea_name</key>
+          <string>%EXTENSION_ATTRIBUTE_NAME%</string>
+          <key>ea_script_path</key>
+          <string>%EXTENSION_ATTRIBUTE_SCRIPT%</string>
+          <key>replace_ea</key>
+          <string>True</string>
+        </dict>
+      </dict>
+
+      <!-- Uploads or replaces Jamf Pro category used for organization -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfCategoryUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>category_name</key>
+          <string>%CATEGORY%</string>
+          <key>category_priority</key>
+          <string>%CATEGORY_PRIORITY%</string>
+          <key>replace</key>
+          <string>%replace_category%</string>
+        </dict>
+      </dict>
+
+      <!-- Uploads the downloaded .pkg to Jamf Pro Packages -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPackageUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>pkg_category</key>
+          <string>%CATEGORY%</string>
+          <key>pkg_display_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_name</key>
+          <string>%PKG_NAME%-%version%.pkg</string>
+          <key>pkg_priority</key>
+          <string>%PKG_PRIORITY%</string>
+          <key>predicate</key>
+          <string>%UPDATE_PREDICATE%</string>
+          <key>replace</key>
+          <string>%replace_pkg%</string>
+          <key>send_notification</key>
+          <string>True</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or replaces the Smart Group used for scoping policies -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfComputerGroupUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>computergroup_name</key>
+          <string>%GROUP_NAME%</string>
+          <key>computergroup_template</key>
+          <string>%GROUP_TEMPLATE%</string>
+          <key>replace_group</key>
+          <string>%replace_group%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the provisioning install policy in Jamf -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_AUTOPKG_MASTER_PROVISIONING_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+        </dict>
+      </dict>
+
+      <!-- Creates or updates the Self Service policy for user installs -->
+      <dict>
+        <key>Processor</key>
+        <string>com.github.grahampugh.jamf-upload.processors/JamfPolicyUploader</string>
+        <key>Arguments</key>
+        <dict>
+          <key>policy_name</key>
+          <string>%POLICY_NAME_SELF_SERVICE_INSTALL%</string>
+          <key>policy_template</key>
+          <string>%POLICY_TEMPLATE_SELF_SERVICE_INSTALL%</string>
+          <key>replace_policy</key>
+          <string>%replace_policy%</string>
+          <key>self_service_description</key>
+          <string>%SELF_SERVICE_DESCRIPTION%</string>
+          <key>icon</key>
+          <string>%SELF_SERVICE_ICON%</string>
+        </dict>
+      </dict>
+
+      <!-- Rename pkg and move to AutoPkg_Pkgs Directory -->
+      <dict>
+        <key>Processor</key>
+        <string>Copier</string>
+        <key>Arguments</key>
+        <dict>
+          <key>source_path</key>
+          <string>%pkg_path%</string>
+          <key>destination_path</key>
+          <string>%AutoPkg_Pkgs%/%PKG_NAME%-%version%.pkg</string>
+        </dict>
+      </dict>
+
+      <!-- Cleanup entire recipe cache directory -->
+      <dict>
+        <key>Processor</key>
+        <string>PathDeleter</string>
+        <key>Arguments</key>
+        <dict>
+          <key>path_list</key>
+          <array>
+            <string>%RECIPE_CACHE_DIR%</string>
+          </array>
+        </dict>
+      </dict>
+
+    </array>
+  </dict>
+</plist>
